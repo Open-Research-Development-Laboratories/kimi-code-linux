@@ -4,7 +4,7 @@ ORDL-maintained Linux x86_64 packaging of Moonshot AI Kimi Code Desktop 1.0.4.
 
 **Requires GLIBC >= 2.42.** This is an intentional initial-release limit. Accepted application testing was on Arch Linux rolling, glibc 2.44, Wayland. Package format availability does not establish support for every Debian, Ubuntu or RPM distribution.
 
-Official [product](https://www.kimi.com/code) and [documentation](https://www.kimi.com/code/docs/en/). Maintained by [Open Research Development Laboratories](https://github.com/Open-Research-Development-Laboratories). Aaron confirmed Moonshot permission for this release. This is ORDL packaging, not a claim that Moonshot built or endorsed these modified artifacts.
+Official [product](https://www.kimi.com/code) and [documentation](https://www.kimi.com/code/docs/en/). Maintained by [Open Research Development Laboratories](https://github.com/Open-Research-Development-Laboratories).
 
 ## Downloads and installation
 
