@@ -1,0 +1,9 @@
+[Desktop Entry]
+Name=Kimi Code
+Comment=Kimi Code Desktop, ORDL Linux packaging
+Exec=/opt/kimi-code/kimi-code %U
+Icon=/opt/kimi-code/resources/build/icon.png
+Terminal=false
+Type=Application
+Categories=Development;Utility;
+StartupWMClass=Kimi Code

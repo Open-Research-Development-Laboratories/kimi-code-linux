@@ -1,0 +1,259 @@
+#!/usr/bin/env bash
+set -Eeuo pipefail
+IFS=$'\n\t'
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+BUNDLE_ROOT="$SCRIPT_DIR"
+PREFIX=""
+DRY_RUN=0
+CHECK_ONLY=0
+STAGE=""
+SUDO_READY=0
+
+die() {
+  printf 'Kimi Code installer error: %s\n' "$*" >&2
+  exit 1
+}
+
+usage() {
+  cat >&2 <<'EOF'
+Usage: install-kimi-code [--bundle PATH] [--prefix PATH] [--check] [--dry-run]
+
+The real install requires an explicit confirmation and administrator
+authentication. The installer never disables the Chromium sandbox and never
+accepts a user-writable prefix for the privileged sandbox helper.
+EOF
+}
+
+while (($# > 0)); do
+  case "$1" in
+    --bundle)
+      (($# >= 2)) || die '--bundle requires a path'
+      BUNDLE_ROOT="$2"
+      shift 2
+      ;;
+    --prefix)
+      (($# >= 2)) || die '--prefix requires a path'
+      PREFIX="$2"
+      shift 2
+      ;;
+    --check)
+      CHECK_ONLY=1
+      shift
+      ;;
+    --dry-run)
+      DRY_RUN=1
+      shift
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      usage
+      die "unknown argument: $1"
+      ;;
+  esac
+done
+
+command -v readlink >/dev/null 2>&1 || die 'readlink is required'
+command -v stat >/dev/null 2>&1 || die 'stat is required'
+command -v sha256sum >/dev/null 2>&1 || die 'sha256sum is required'
+command -v file >/dev/null 2>&1 || die 'file is required'
+
+BUNDLE_ROOT="$(readlink -f -- "$BUNDLE_ROOT")" || die "cannot resolve bundle path: $BUNDLE_ROOT"
+[ -d "$BUNDLE_ROOT" ] || die "bundle directory does not exist: $BUNDLE_ROOT"
+
+if [[ -z "$PREFIX" ]]; then
+  if [[ -n "${KIMI_CODE_INSTALL_PREFIX:-}" ]]; then
+    PREFIX="$KIMI_CODE_INSTALL_PREFIX"
+  elif command -v kimi-code >/dev/null 2>&1; then
+    EXISTING_LAUNCHER="$(readlink -f -- "$(command -v kimi-code)")"
+    EXISTING_PREFIX="$(dirname -- "$EXISTING_LAUNCHER")"
+    case "$EXISTING_PREFIX" in
+      /opt/*|/usr/local/lib/*|/usr/lib/*) PREFIX="$EXISTING_PREFIX" ;;
+      *) PREFIX="/opt/kimi-code" ;;
+    esac
+  else
+    PREFIX="/opt/kimi-code"
+  fi
+fi
+
+[[ "$PREFIX" = /* ]] || die "install prefix must be absolute: $PREFIX"
+PREFIX="$(readlink -m -- "$PREFIX")" || die "cannot normalize install prefix: $PREFIX"
+
+secure_existing_chain() {
+  local current="$1"
+  current="$(readlink -m -- "$current")" || die "cannot normalize path: $1"
+  while :; do
+    [ -e "$current" ] || die "secure install parent does not exist: $current"
+    [ ! -L "$current" ] || die "secure install path contains a symlink: $current"
+    local owner_mode uid gid mode mode_value
+    owner_mode="$(stat -c '%u:%g:%a' -- "$current")" || die "cannot inspect install path: $current"
+    IFS=: read -r uid gid mode <<<"$owner_mode"
+    [ "$uid" = 0 ] && [ "$gid" = 0 ] || die "install path is not root-owned: $current ($owner_mode)"
+    mode_value=$((8#$mode))
+    (( (mode_value & 18) == 0 )) || die "install path is group or other writable: $current ($owner_mode)"
+    [ "$current" = / ] && break
+    current="$(dirname -- "$current")"
+  done
+}
+
+secure_existing_ancestor() {
+  local current="$1"
+  current="$(readlink -m -- "$current")" || die "cannot normalize path: $1"
+  while [ ! -e "$current" ]; do
+    [ "$current" != / ] || die 'no existing secure install ancestor'
+    current="$(dirname -- "$current")"
+  done
+  secure_existing_chain "$current"
+}
+
+validate_bundle() {
+  local required helper_type helper_mode
+  for required in kimi-code kimi-code-bin chrome-sandbox resources/app INSTALL-MANIFEST.sha256; do
+    [ -e "$BUNDLE_ROOT/$required" ] || die "bundle is missing $required"
+  done
+  [ -f "$BUNDLE_ROOT/chrome-sandbox" ] || die 'chrome-sandbox must be a regular file'
+  [ ! -L "$BUNDLE_ROOT/chrome-sandbox" ] || die 'chrome-sandbox must not be a symlink'
+  [ -x "$BUNDLE_ROOT/kimi-code-bin" ] || die 'kimi-code-bin must be executable'
+  validate_internal_symlinks "$BUNDLE_ROOT"
+  helper_type="$(file -b -- "$BUNDLE_ROOT/chrome-sandbox")"
+  [[ "$helper_type" == *ELF* ]] || die "chrome-sandbox is not an ELF executable: $helper_type"
+  helper_mode="$(stat -c '%a' -- "$BUNDLE_ROOT/chrome-sandbox")"
+  case "$helper_mode" in
+    755|4755) ;;
+    *) die "source chrome-sandbox must have safe executable mode 0755 or 4755, found $helper_mode" ;;
+  esac
+  if ! (cd -- "$BUNDLE_ROOT" && sha256sum --strict --quiet -c INSTALL-MANIFEST.sha256); then
+    die 'bundle integrity manifest does not match the trusted runtime files'
+  fi
+}
+
+validate_internal_symlinks() {
+  local root="$1" link resolved
+  while IFS= read -r -d '' link; do
+    resolved="$(readlink -f -- "$link")" || die "cannot resolve bundle symlink: $link"
+    case "$resolved" in
+      "$root"/*) ;;
+      *) die "bundle symlink escapes the bundle: $link -> $resolved" ;;
+    esac
+    [ "$resolved" != "$root/chrome-sandbox" ] || die "bundle symlink targets the privileged sandbox helper: $link"
+    [ "$resolved" != "$root/kimi-code-bin" ] || die "bundle symlink targets the runtime binary: $link"
+  done < <(find "$root" -type l -print0)
+}
+
+validate_target() {
+  [ ! -L "$PREFIX" ] || die "install prefix must not be a symlink: $PREFIX"
+  if [ -e "$PREFIX" ]; then
+    [ -d "$PREFIX" ] || die "install prefix is not a directory: $PREFIX"
+    secure_existing_chain "$PREFIX"
+  else
+    secure_existing_ancestor "$(dirname -- "$PREFIX")"
+  fi
+}
+
+verify_staged_bundle() {
+  local owner_mode unsafe_mode
+  validate_internal_symlinks "$STAGE"
+  owner_mode="$(stat -c '%u:%g:%a' -- "$STAGE/chrome-sandbox")" || die 'cannot inspect staged chrome-sandbox'
+  [ "$owner_mode" = 0:0:4755 ] || die "staged chrome-sandbox is not root-owned mode 4755: $owner_mode"
+  unsafe_mode="$(find "$STAGE" \( -type d -o -type f \) -perm /022 -print -quit)"
+  [ -z "$unsafe_mode" ] || die "staged install contains a group or other writable path: $unsafe_mode"
+  if ! (cd -- "$STAGE" && sha256sum --strict --quiet -c INSTALL-MANIFEST.sha256); then
+    die 'staged runtime files failed the trusted integrity manifest'
+  fi
+}
+
+print_plan() {
+  printf 'Bundle: %s\n' "$BUNDLE_ROOT"
+  printf 'Install prefix: %s\n' "$PREFIX"
+  printf 'Sandbox helper: %s\n' "$BUNDLE_ROOT/chrome-sandbox"
+  printf '%s\n' 'Checks: trusted helper hash, ELF type, internal-only symlinks, root-owned non-writable install ancestors'
+  printf '%s\n' 'Install behavior: root-owned staging, chrome-sandbox mode 4755, atomic replacement with a retained backup'
+}
+
+cleanup() {
+  if [[ -n "$STAGE" && -d "$STAGE" ]]; then
+    if ((SUDO_READY)); then
+      sudo rm -rf -- "$STAGE" || true
+    elif ((EUID == 0)); then
+      rm -rf -- "$STAGE" || true
+    fi
+  fi
+}
+trap cleanup EXIT
+
+validate_bundle
+validate_target
+print_plan
+
+if ((CHECK_ONLY || DRY_RUN)); then
+  printf '%s\n' 'Preflight passed. No files, permissions, ownership, or processes were changed.'
+  exit 0
+fi
+
+if [ ! -t 0 ]; then
+  die 'interactive confirmation is required for installation'
+fi
+printf 'Install Kimi Code to %s? [y/N] ' "$PREFIX" >&2
+read -r answer
+case "$answer" in
+  y|Y|yes|YES) ;;
+  *) die 'installation cancelled' ;;
+esac
+
+if ((EUID != 0)); then
+  command -v sudo >/dev/null 2>&1 || die 'sudo is required for a system installation'
+  printf '%s\n' 'Administrator authentication is required to install the root-owned sandbox helper.' >&2
+  sudo -v || die 'administrator authentication failed'
+  SUDO_READY=1
+fi
+
+privileged() {
+  if ((EUID == 0)); then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+privileged_capture() {
+  if ((EUID == 0)); then
+    "$@"
+  else
+    sudo "$@"
+  fi
+}
+
+parent="$(dirname -- "$PREFIX")"
+privileged mkdir -p -- "$parent"
+privileged chown 0:0 -- "$parent"
+privileged chmod go-w -- "$parent"
+secure_existing_chain "$parent"
+STAGE="$(privileged_capture mktemp -d "$parent/.kimi-code-stage.XXXXXX")"
+privileged cp -a --no-preserve=ownership "$BUNDLE_ROOT/." "$STAGE/"
+privileged chown -R 0:0 -- "$STAGE"
+privileged find "$STAGE" -type d -exec chmod go-w -- {} +
+privileged find "$STAGE" -type f -exec chmod go-w -- {} +
+privileged chmod 0755 -- "$STAGE"
+privileged chmod 0755 -- "$STAGE/kimi-code" "$STAGE/kimi-code-bin"
+privileged chown 0:0 -- "$STAGE/chrome-sandbox"
+privileged chmod 4755 -- "$STAGE/chrome-sandbox"
+verify_staged_bundle
+
+backup=""
+if [ -e "$PREFIX" ]; then
+  backup="$PREFIX.previous.$(date +%Y%m%d-%H%M%S)"
+  [ ! -e "$backup" ] && [ ! -L "$backup" ] || die "backup path already exists: $backup"
+  privileged mv -- "$PREFIX" "$backup"
+fi
+if ! privileged mv -- "$STAGE" "$PREFIX"; then
+  if [[ -n "$backup" && ! -e "$PREFIX" ]]; then
+    privileged mv -- "$backup" "$PREFIX" || true
+  fi
+  die 'atomic install move failed; previous installation was left in place when possible'
+fi
+STAGE=""
+printf 'Installed Kimi Code to %s\n' "$PREFIX"
+printf '%s\n' 'Runtime check: launch the installed kimi-code command. If it refuses to start, verify root ownership and mode 4755 on chrome-sandbox and every install parent.'

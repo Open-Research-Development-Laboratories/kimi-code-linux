@@ -1,0 +1,14 @@
+pkgname=kimi-code-ordl
+pkgver=1.0.4
+pkgrel=2
+pkgdesc='Kimi Code Desktop community Linux packaging by ORDL'
+arch=('x86_64')
+url='https://www.kimi.com/code'
+license=('custom:Moonshot-permission' 'MIT')
+depends=('glibc>=2.42' 'gcc-libs' 'glib2' 'nss' 'nspr' 'atk' 'at-spi2-core' 'libcups' 'dbus' 'cairo' 'gtk3' 'pango' 'libx11' 'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxrandr' 'mesa' 'expat' 'libxcb' 'libxkbcommon' 'systemd-libs' 'alsa-lib')
+options=('!strip' '!debug' '!purge' '!zipman' 'libtool' 'staticlibs' 'emptydirs')
+source=('KimiCode-1.0.4-ordl.2-linux-x64.tar.xz' 'stage.sh' 'NATIVE-README.md' 'kimi-code-ordl.desktop')
+sha256sums=('dfd35672af395c7a1da5d80fda3f7e2c463a642c97ff5fc70d97e00141f8c299' '351f74801f02e0ccb13aded0cba11c440c1a01ca6b3fa6dd57fe17e8c564c6d1' '3a3127382333df34b0d57c2c7627e12fb9f2700830a6f4c7ee141f034f14e19b' 'c22a6bc5c8e031f1539dc8e840424908990b505aac509b850be58555d9f6c1f8')
+package() {
+  bash "$srcdir/stage.sh" "$srcdir/KimiCode-linux-x64" "$pkgdir"
+}

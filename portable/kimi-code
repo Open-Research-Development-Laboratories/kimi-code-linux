@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+# Kimi Code (Desktop) native Linux launcher
+DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SANDBOX="$DIR/chrome-sandbox"
+MANIFEST="$DIR/INSTALL-MANIFEST.sha256"
+if [ ! -f "$MANIFEST" ] || ! (cd "$DIR" && sha256sum --strict --quiet -c "$MANIFEST"); then
+  printf '%s\n' 'Kimi Code cannot start: trusted runtime files failed integrity verification.' >&2
+  printf '%s\n' 'Repair: reinstall the bundle with install-kimi-code, or ask an administrator to restore the trusted runtime files.' >&2
+  exit 78
+fi
+if [ ! -f "$SANDBOX" ]; then
+  printf '%s\n' 'Kimi Code cannot start: chrome-sandbox is missing.' >&2
+  printf '%s\n' 'Repair: reinstall the bundle with install-kimi-code, or ask an administrator to restore the trusted sandbox helper.' >&2
+  exit 78
+fi
+SANDBOX_OWNER_MODE="$(stat -c '%u:%g:%a' "$SANDBOX" 2>/dev/null || true)"
+if [ "$SANDBOX_OWNER_MODE" != "0:0:4755" ]; then
+  printf '%s\n' 'Kimi Code cannot start: chrome-sandbox must be root-owned with mode 4755.' >&2
+  printf 'Repair: sudo chown root:root -- %q && sudo chmod 4755 -- %q\n' "$SANDBOX" "$SANDBOX" >&2
+  exit 78
+fi
+
+CURRENT="$DIR"
+while :; do
+  PARENT_OWNER_MODE="$(stat -c '%u:%g:%a' "$CURRENT" 2>/dev/null || true)"
+  IFS=: read -r PARENT_UID PARENT_GID PARENT_MODE <<<"$PARENT_OWNER_MODE"
+  PARENT_MODE_VALUE=$((8#${PARENT_MODE:-777}))
+  if [ "$PARENT_UID" != 0 ] || [ "$PARENT_GID" != 0 ] || (( (PARENT_MODE_VALUE & 18) != 0 )); then
+    printf 'Kimi Code cannot start: install parent is not root-owned and non-writable: %q (%s)\n' "$CURRENT" "$PARENT_OWNER_MODE" >&2
+    printf 'Repair: sudo chown root:root -- %q && sudo chmod go-w -- %q\n' "$CURRENT" "$CURRENT" >&2
+    printf '%s\n' 'Then rerun install-kimi-code so the application and sandbox helper are staged safely.' >&2
+    exit 78
+  fi
+  [ "$CURRENT" = / ] && break
+  CURRENT="$(dirname -- "$CURRENT")"
+done
+
+exec "$DIR/kimi-code-bin" "$DIR/resources/app" "$@"

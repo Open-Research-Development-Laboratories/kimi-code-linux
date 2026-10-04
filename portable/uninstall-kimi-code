@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+set -euo pipefail
+[[ $# = 2 && "$1" = --prefix ]] || { printf 'Usage: uninstall-kimi-code --prefix ABSOLUTE_INSTALL_DIRECTORY\n' >&2; exit 2; }
+target="$2"
+[[ "$target" = /* && "$target" != / && "$target" != /opt && "$target" != /usr && "$target" != /usr/local && "$target" != /usr/lib ]] || { printf 'Refusing broad or relative target.\n' >&2; exit 2; }
+[[ ! -L "$target" && -d "$target" ]] || exit 2
+target="$(readlink -f -- "$target")"
+[[ -f "$target/PACKAGING-REVISION" && -f "$target/INSTALL-MANIFEST.sha256" && -f "$target/kimi-code" ]] || { printf 'Target is not an identified ORDL Code installation.\n' >&2; exit 2; }
+[[ "$(stat -c '%u:%g' -- "$target")" = 0:0 ]] || exit 2
+current="$target"
+while :; do
+  IFS=: read -r uid gid mode <<<"$(stat -c '%u:%g:%a' -- "$current")"
+  [[ "$uid:$gid" = 0:0 ]] && (( (8#$mode & 18) == 0 )) || { printf 'Unsafe installation parent: %s\n' "$current" >&2; exit 2; }
+  [[ "$current" = / ]] && break
+  current="$(dirname -- "$current")"
+done
+[[ -t 0 ]] || { printf 'Interactive confirmation required.\n' >&2; exit 2; }
+retired="$target.uninstalled.$(date +%Y%m%d-%H%M%S)"
+[[ ! -e "$retired" && ! -L "$retired" ]] || exit 2
+printf 'Retire installation %s to %s? User data will be retained. [y/N] ' "$target" "$retired"
+read -r answer
+[[ "$answer" = y || "$answer" = Y ]] || exit 1
+if (( EUID == 0 )); then
+  mv -T -- "$target" "$retired"
+else
+  printf 'Administrator authentication required.\n'
+  sudo -v
+  sudo mv -T -- "$target" "$retired"
+fi
+printf 'Installation retired to %s. User data was retained.\n' "$retired"

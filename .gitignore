@@ -1,0 +1,12 @@
+*.tar.xz
+*.deb
+*.rpm
+*.pkg.tar.zst
+build-tools/
+rpm-build/
+deb-build.*/
+src/
+pkg/
+node_modules/
+*.log
+.env*

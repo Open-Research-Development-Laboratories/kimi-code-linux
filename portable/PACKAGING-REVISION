@@ -1,0 +1,4 @@
+upstream_version=1.0.4
+packaging_revision=ordl.2
+architecture=linux-x64
+release_status=prepared-local-publication-pending
