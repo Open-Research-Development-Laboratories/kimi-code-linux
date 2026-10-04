@@ -6,7 +6,7 @@ ORDL-maintained Linux x86_64 packaging of Moonshot AI Kimi Code Desktop 1.0.4.
 
 Official [product](https://www.kimi.com/code) and [documentation](https://www.kimi.com/code/docs/en/). Maintained by [Open Research Development Laboratories](https://github.com/Open-Research-Development-Laboratories).
 
-Moonshot has asked Open Research and Development Laboratories to maintain and manage Kimi Code for Linux.
+Developed and maintained by Open Research and Development Laboratories for the Kimi ecosystem, with encouragement from the Kimi team.
 
 ## Downloads and installation
 
