@@ -37,7 +37,7 @@ Embedded README text in native revision-1 artifacts predates the permission conf
 
 ## Source and provenance
 
-This repository contains ORDL launcher, installer, manual updater and packaging work. The assembled application is distributed separately as release assets. It combines vendor desktop 1.0.4 inputs with Electron 43.1.1 Linux and a locally built node-pty 1.1.0 component. The latter requires GLIBC 2.42 and has SHA256 `7be4058f232bc88df150e0403775109bef4523818ded32ebeb9cfad455f1f5e3` in all four Linux copies.
+This repository contains the available Kimi Code application code under [source/](source/), alongside ORDL launcher, installer, manual updater and packaging work. The available product code is the shipped Electron main/preload and renderer JavaScript bundles, dependency source and UI resources; Moonshot's original unbundled product source checkout is not available here. See [source/README.md](source/README.md) for exact scope and provenance. The assembled application remains downloadable as release assets. It combines vendor desktop 1.0.4 inputs with Electron 43.1.1 Linux and a locally built node-pty 1.1.0 component. The latter requires GLIBC 2.42 and has SHA256 `7be4058f232bc88df150e0403775109bef4523818ded32ebeb9cfad455f1f5e3` in all four Linux copies.
 
 Archive packaging is deterministic from assembled inputs; this is not a claim of a reproducible proprietary upstream source build. Published packaging recipes target corrected archive revision 2 and native packaging revision 2 for future rebuilds. Initial native release assets remain revision 1; those recipes must not be described as reproducing their exact bytes.
 

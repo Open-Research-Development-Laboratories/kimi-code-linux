@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" href="/favicon.ico" sizes="64x64" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
+    <meta name="color-scheme" content="light dark" />
+    <meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121212" media="(prefers-color-scheme: dark)" />
+    <!-- Apply persisted display prefs BEFORE the bundle loads: without this,
+         users can get a color-scheme/font flash before useKimiWebClient mirrors
+         the data attributes. Mirrors applyColorSchemeToDocument and
+         useAppearance's font-scale migration (retired 'xxlarge' → 'xlarge';
+         legacy px key → nearest step). -->
+    <script>
+      (function () {
+        try {
+          var v = localStorage.getItem('kimi-web.color-scheme');
+          if (v === 'light' || v === 'dark' || v === 'system') {
+            document.documentElement.dataset.colorScheme = v;
+          }
+          var fs = localStorage.getItem('kimi-web.font-scale');
+          if (fs === 'xxlarge') fs = 'xlarge';
+          if (fs !== 'small' && fs !== 'medium' && fs !== 'large' && fs !== 'xlarge') {
+            var legacy = localStorage.getItem('kimi-web.ui-font-size');
+            var px = Number(legacy);
+            fs =
+              legacy !== null && isFinite(px)
+                ? px <= 13
+                  ? 'small'
+                  : px <= 15
+                    ? 'medium'
+                    : px <= 17
+                      ? 'large'
+                      : 'xlarge'
+                : 'medium';
+          }
+          document.documentElement.dataset.fontScale = fs;
+        } catch (e) {
+          /* ignore */
+        }
+      })();
+    </script>
+    <title>Kimi Code</title>
+    <script type="module" crossorigin src="/assets/main-B49WgR-r.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/icons-YJRzekD9.js">
+    <link rel="modulepreload" crossorigin href="/assets/Button-t_f9RMx4.js">
+    <link rel="modulepreload" crossorigin href="/assets/wght-BLWPWlxb.js">
+    <link rel="modulepreload" crossorigin href="/assets/browser-control-DMM8Yvdy.js">
+    <link rel="modulepreload" crossorigin href="/assets/browserTextHighlight-Ixsu2rd8.js">
+    <link rel="modulepreload" crossorigin href="/assets/IconButton-CFzUiZ2K.js">
+    <link rel="modulepreload" crossorigin href="/assets/Tooltip-zdbD3bEG.js">
+    <link rel="modulepreload" crossorigin href="/assets/SegmentedControl-Bq8Yjmes.js">
+    <link rel="modulepreload" crossorigin href="/assets/keymap-jshTxbsS.js">
+    <link rel="stylesheet" crossorigin href="/assets/icons-Hvqq7CPm.css">
+    <link rel="stylesheet" crossorigin href="/assets/wght--9wnPkiH.css">
+    <link rel="stylesheet" crossorigin href="/assets/main-jHLQldw0.css">
+  </head>
+  <body>
+    <div id="app"></div>
+  </body>
+</html>
