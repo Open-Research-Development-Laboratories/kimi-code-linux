@@ -2,7 +2,7 @@
 
 Moonshot AI application; Linux packaging maintained by Open Research Development Laboratories. Product: https://www.kimi.com/code. Documentation: https://www.kimi.com/code/docs/en/. Electron MIT and Chromium notices remain in LICENSE and LICENSES.chromium.html. Release owner confirmed Moonshot permission. No blanket open-source license or Moonshot endorsement is claimed.
 
-This package installs to /opt/kimi-code-ordl. Launch its kimi-code executable or the desktop entry. The package manager owns this installation, including the root-owned sandbox helper mode 4755. Installation requires normal package-manager administrator authorization. The launcher verifies runtime hashes and protected parent permissions and fails closed if they are unsafe.
+This package installs to /opt/kimi-code-ordl. Launch with kimi-code from your terminal or use the desktop entry. The /usr/bin/kimi-code wrapper forwards arguments to /opt/kimi-code-ordl/kimi-code; the separate kimi CLI is unchanged. The package manager owns this installation, including the root-owned sandbox helper mode 4755. Installation requires normal package-manager administrator authorization. The launcher verifies runtime hashes and protected parent permissions and fails closed if they are unsafe.
 
 This accepted runtime requires GLIBC 2.42 because of its bundled node-pty native module. The package manager must reject systems with older glibc. Broad Debian, Ubuntu, or RPM-distribution compatibility is not established by building these package formats.
 

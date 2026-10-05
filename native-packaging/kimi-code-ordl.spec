@@ -8,6 +8,7 @@ Source0: KimiCode-1.0.4-ordl.2-linux-x64.tar.xz
 Source1: stage.sh
 Source2: NATIVE-README.md
 Source3: kimi-code-ordl.desktop
+Source4: kimi-code
 ExclusiveArch: x86_64
 AutoReqProv: yes
 Requires: libc.so.6(GLIBC_2.42)(64bit)
@@ -33,3 +34,4 @@ bash %{SOURCE1} "$PWD" "%{buildroot}"
 /opt/kimi-code-ordl
 %attr(4755,root,root) /opt/kimi-code-ordl/chrome-sandbox
 /usr/share/applications/kimi-code-ordl.desktop
+/usr/bin/kimi-code

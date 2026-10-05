@@ -1,5 +1,7 @@
 # Release signature verification
 
+The [corrected native release](https://github.com/Open-Research-Development-Laboratories/kimi-code-linux/releases/tag/v1.0.4-ordl.3) includes packages, matching detached signatures, SHA256SUMS with its signature, and the same public key in one release. Use the verification commands below with files from that release. The older signature supplement described below remains available for the initial artifacts.
+
 ORDL uses one dedicated release-signing identity for Code and Work Linux distributions:
 
 - Identity: ORDL Release Signing <ordl@ordl.org>

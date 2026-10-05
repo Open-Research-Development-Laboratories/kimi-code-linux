@@ -1,6 +1,6 @@
 # Packaging from assembled release inputs
 
-These recipes target native packaging revision 2 using the corrected portable archive. They were prepared after initial native revision-1 assets were built. They do not reproduce those initial native artifact hashes and are not claimed as newly built revision-2 packages.
+These recipes target native packaging revision 2 using the corrected portable archive and add the /usr/bin/kimi-code command. Revision-2 Arch, DEB and RPM candidates built successfully and passed command regression tests. They do not reproduce older immutable native revision-1 artifact hashes.
 
 Download KimiCode-1.0.4-ordl.2-linux-x64.tar.xz from this repository's release and verify SHA256SUMS. Keep it at repository root for build-deb.sh and copy it into native-packaging for RPM/Arch source lookup. Do not execute a downloaded runtime merely to package it.
 

@@ -1,0 +1,2 @@
+#!/bin/sh
+exec /opt/kimi-code-ordl/kimi-code "$@"
